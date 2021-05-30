@@ -1,0 +1,49 @@
+version: "3.9"
+
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
+
+    command: python3 server.py
+
+    ports:
+      - 8956:8956/udp
+
+  client1:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+
+    command: python3 client.py
+
+    network_mode: host
+
+    depends_on:
+      - server
+
+  client2:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+
+    command: python3 client.py
+
+    network_mode: host
+
+    depends_on:
+      - server
+
+  client3:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+
+    command: python3 client.py
+
+    network_mode: host
+
+    depends_on:
+      - server
