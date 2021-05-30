@@ -1,4 +1,5 @@
 
+import argparse
 import asyncio
 import logging
 
@@ -12,29 +13,55 @@ class TCPServerProtocol(TCPProtocol):
     def __init__(self):
         super().__init__()
 
-        self.counter = 0
-
     def message_recieved(self, data: bytes, addr: Address):
-        self.counter += len(data)
-        # self.send(data, addr)
-
-        if self.counter == 15 * 1024 * 1024:
-            raise Exception('kek!')
+        self.logger.info('[%s] Message recieved %s', addr, data)
 
     @classmethod
-    async def start(cls):
+    async def start(cls, host: str = '0.0.0.0', port: int = 8956):
         cls.logger.info('Starting UDP server')
 
         return await asyncio.get_running_loop().create_datagram_endpoint(
             lambda: cls(),
-            local_addr=('0.0.0.0', 9999)
+            local_addr=(host, port)
         )
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(name)-24s [LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s')
+def build_parser():
+    parser = argparse.ArgumentParser()
 
+    parser.add_argument(
+        '-H', '--host', type=str,
+        help='Host to serve',
+        default='0.0.0.0',
+    )
+
+    parser.add_argument(
+        '-p', '--port', type=int,
+        help='Port to serve',
+        default=8956
+    )
+
+    parser.add_argument(
+        '-l', '--logging-level', type=str,
+        help='Logging level',
+        default='INFO',
+    )
+
+    return parser
+
+
+async def main():
+    args = build_parser().parse_args()
+
+    logging.basicConfig(
+        level=logging.getLevelName(args.logging_level),
+        format='%(name)-24s [LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s'
+    )
+
+    await TCPServerProtocol.start(host=args.host, port=args.port)
+
+
+if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.create_task(TCPServerProtocol.start())
+    loop.create_task(main())
     loop.run_forever()

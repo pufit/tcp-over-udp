@@ -1,4 +1,6 @@
 
+import aioconsole
+import argparse
 import asyncio
 import logging
 import typing as tp
@@ -46,28 +48,54 @@ class TCPClientProtocol(TCPProtocol):
         return data
 
     @classmethod
-    async def start(cls):
+    async def start(cls, host: str = '127.0.0.1', port: int = 8956):
         return await asyncio.get_running_loop().create_datagram_endpoint(
-            lambda: cls(('127.0.0.1', 9999)),
-            remote_addr=('127.0.0.1', 9999)
+            lambda: cls((host, port)),
+            remote_addr=(host, port)
         )
 
 
+def build_parser():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        '-H', '--host', type=str,
+        help='Host to connect',
+        default='127.0.0.1'
+    )
+
+    parser.add_argument(
+        '-p', '--port', type=int,
+        help='Port to connect',
+        default=8956
+    )
+
+    parser.add_argument(
+        '-l', '--logging-level', type=str,
+        help='Logging level',
+        default='INFO',
+    )
+
+    return parser
+
+
 async def main():
-    logging.basicConfig(level=logging.INFO,
-                        format='%(name)-24s [LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s')
+    args = build_parser().parse_args()
+
+    logging.basicConfig(
+        level=logging.getLevelName(args.logging_level),
+        format='%(name)-24s [LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s'
+    )
 
     protocol: TCPClientProtocol
-    _, protocol = await TCPClientProtocol.start()
+    _, protocol = await TCPClientProtocol.start(host=args.host, port=args.port)
 
     await protocol.connected
 
-    import os
-    message = os.urandom(int(1024 * 1024 * 15))
+    while True:
+        data = await aioconsole.ainput()
+        protocol.send(data.encode('utf-8'))
 
-    protocol.send(message)
-    assert await protocol.recv(int(1024 * 1024 * 15)) == message
-    raise Exception('YES!')
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

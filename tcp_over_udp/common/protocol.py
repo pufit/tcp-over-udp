@@ -213,10 +213,9 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
                 window_size += len(packet_data)
                 if window_size >= const.WINDOW_SIZE:
                     window_size = 0
-                    await self._send(connection, const.Flags.PSH, packet_data)
+                    await self._send(connection, const.Flags.PSH | const.Flags.ACK, packet_data)
                 else:
-                    # noinspection PyArgumentList
-                    flags = const.Flags.PSH if i == max_i - 1 else const.Flags.ACK
+                    flags = const.Flags.PSH | const.Flags.ACK if i == max_i - 1 else const.Flags.ACK
 
                     # noinspection PyAsyncCall
                     self._send(connection, flags, packet_data)
