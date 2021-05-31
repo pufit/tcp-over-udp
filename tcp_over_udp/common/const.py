@@ -16,7 +16,9 @@ CHECKSUM_SIZE = struct.calcsize(CHECKSUM_FORMAT)
 FLAGS_FORMAT = 'B'
 FLAGS_SIZE = struct.calcsize(FLAGS_FORMAT)
 
-WINDOW_SIZE = 1024 * 100
+WINDOW_SIZE = 1024 * 100  # bytes
+
+PACKET_ACK_TIMEOUT = 1  # seconds
 
 
 class Flags(enum.Flag):

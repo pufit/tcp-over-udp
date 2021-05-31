@@ -179,9 +179,12 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
         self.transport.sendto(packet.to_bytes(), connection.address)
 
         if need_ack:
-            handler = asyncio.get_running_loop().call_later(1, functools.partial(self._send_packet, connection, packet, need_ack))
-            self._waiting_ack[connection.address or self._target][connection.local_sequence_number] = handler
+            handler = asyncio.get_running_loop().call_later(
+                const.PACKET_ACK_TIMEOUT,
+                functools.partial(self._send_packet, connection, packet, need_ack)
+            )
 
+            self._waiting_ack[connection.address or self._target][connection.local_sequence_number] = handler
             if not (future := self._ack_futures[connection.address or self._target].get(connection.local_sequence_number)):
                 future = asyncio.get_running_loop().create_future()
                 self._ack_futures[connection.address or self._target][connection.local_sequence_number] = future
