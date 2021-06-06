@@ -15,7 +15,7 @@ class TCPClientProtocol(TCPProtocol):
     def __init__(self, target):
         super().__init__(target)
         self.connection = Connection(target)
-        self.connections[target] = self.connection
+        self.connections[None] = self.connection
 
         self.messages_buffer = asyncio.Queue()
         self._bytes_buffer = b''

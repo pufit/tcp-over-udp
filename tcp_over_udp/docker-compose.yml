@@ -2,48 +2,66 @@ version: "3.9"
 
 
 services:
-  server:
+  main-server:
     build:
       context: .
       dockerfile: docker/server/Dockerfile
 
     command: python3 server.py
-
     ports:
       - 8956:8956/udp
 
-  client1:
+  main-client:
     build:
       context: .
       dockerfile: docker/client/Dockerfile
 
     command: python3 client.py
 
-    network_mode: host
+    depends_on:
+      - main-server
+
+  loss:
+    image: gaiaadm/pumba
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: "--log-level info netem --duration 120s --tc-image gaiadocker/iproute2 loss --percent 25 re2:main"
 
     depends_on:
-      - server
+      - main-client
 
-  client2:
-    build:
-      context: .
-      dockerfile: docker/client/Dockerfile
-
-    command: python3 client.py
-
-    network_mode: host
+  chaos-loss:
+    image: gaiaadm/pumba
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: "--log-level info netem --duration 120s --tc-image gaiadocker/iproute2 loss --percent 70 re2:main"
 
     depends_on:
-      - server
+      - main-client
 
-  client3:
-    build:
-      context: .
-      dockerfile: docker/client/Dockerfile
-
-    command: python3 client.py
-
-    network_mode: host
+  delay:
+    image: gaiaadm/pumba
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: "--log-level info netem --duration 120s --tc-image gaiadocker/iproute2 delay --time 300 re2:main"
 
     depends_on:
-      - server
+      - main-client
+
+  duplicate:
+    image: gaiaadm/pumba
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: "--log-level info netem --duration 120s --tc-image gaiadocker/iproute2 duplicate --percent 25 re2:main"
+
+    depends_on:
+      - main-client
+
+  corrupt:
+    image: gaiaadm/pumba
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: "--log-level info netem --duration 120s --tc-image gaiadocker/iproute2 corrupt --percent 25 re2:main"
+
+    depends_on:
+      - main-client

@@ -20,10 +20,10 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
     def __init__(self, target=None):
         self.transport: tp.Optional[asyncio.DatagramTransport] = None
 
-        self.connections: tp.Dict[Address, Connection] = {}
+        self.connections: tp.Dict[tp.Optional[Address], Connection] = {}
 
-        self._waiting_ack: tp.DefaultDict[str, tp.Dict[int, asyncio.TimerHandle]] = collections.defaultdict(dict)
-        self._ack_futures: tp.DefaultDict[str, tp.Dict[int, asyncio.Future]] = collections.defaultdict(dict)
+        self._waiting_ack: tp.DefaultDict[tp.Optional[Address], tp.Dict[int, asyncio.TimerHandle]] = collections.defaultdict(dict)
+        self._ack_futures: tp.DefaultDict[tp.Optional[Address], tp.Dict[int, asyncio.Future]] = collections.defaultdict(dict)
 
         self._target = target
 
@@ -33,6 +33,10 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
         self._packet_sender_task = asyncio.get_running_loop().create_task(self._packet_sender_loop())
 
         self._stopped = False
+
+    @property
+    def is_client(self):
+        return bool(self._target)
 
     def connection_made(self, transport: asyncio.DatagramTransport):
         self.transport = transport
@@ -51,7 +55,7 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
         pass
 
     def send(self, data: bytes, address=None):
-        if not (connection := self.connections.get(address or self._target)) or not connection.state == ConnectionState.ESTABLISHED:
+        if not (connection := self.connections.get(address)) or not connection.state == ConnectionState.ESTABLISHED:
             raise ValueError('Connection closed')
 
         self._outgoing_queue.put_nowait((data, connection))
@@ -80,6 +84,9 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
                     del self._ack_futures[addr][other_ack]
 
     def _process_packet(self, packet: TCPPacket, address: Address):
+        if self.is_client:
+            address = None
+
         if not (connection := self.connections.get(address)):
             connection = Connection(address)
             self.connections[address] = connection
@@ -176,7 +183,7 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
             packet,
         )
 
-        self.transport.sendto(packet.to_bytes(), connection.address)
+        self.transport.sendto(packet.to_bytes(), connection.address if not self.is_client else None)
 
         if need_ack:
             handler = asyncio.get_running_loop().call_later(
@@ -184,7 +191,7 @@ class TCPProtocol(asyncio.protocols.DatagramProtocol):
                 functools.partial(self._send_packet, connection, packet, need_ack)
             )
 
-            self._waiting_ack[connection.address or self._target][connection.local_sequence_number] = handler
+            self._waiting_ack[connection.address][connection.local_sequence_number] = handler
             if not (future := self._ack_futures[connection.address or self._target].get(connection.local_sequence_number)):
                 future = asyncio.get_running_loop().create_future()
                 self._ack_futures[connection.address or self._target][connection.local_sequence_number] = future

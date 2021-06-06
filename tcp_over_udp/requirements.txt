@@ -1,3 +1,5 @@
 pytest==6.2.4
 pytest-asyncio==0.15.1
 aioconsole==0.3.1
+docker_composer==0.8.5
+async-timeout==3.0.1
