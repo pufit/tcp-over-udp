@@ -1,3 +1,3 @@
 #!/bin/sh
 
-PYTHONPATH=. python3 tcp_over_udp/client/client.py "$@"
+PYTHONPATH=. python3 tcp_over_udp/server/server.py "$@"
